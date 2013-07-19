@@ -20,6 +20,9 @@ enum {  AC_ERR = -1,
 };
 
 
+/*  struct for storing strings and positions of strings which aid
+    in identifying the bank the statement is issued from
+ */
 typedef struct ac_id
 {
     const char* id0;
@@ -29,6 +32,14 @@ typedef struct ac_id
 } acid;
 
 
+/*  statement field types, they're all pretty static regarding order,
+    with the exception being STF_CR and STF_DR (paid in, and paid out)
+    which are one way round in HSBC statements, and the other way round
+    in Natwest statments.
+
+    my code may appear to work with statements with more variations
+    of field order, but that is not the case.
+ */
 enum {  STF_ERR = -1,
         STF_DATE = 0,
         STF_TYPE,
@@ -42,6 +53,8 @@ enum {  STF_ERR = -1,
 };
 
 
+/* struct for storing information about field/column position
+ */
 typedef struct st_field
 {
     int type;
@@ -63,6 +76,9 @@ static const char* months[] = {
 };
 
 
+/*  head of linked list used for storing transaction information
+    obtained from statement.
+ */
 static tran first = { -1, -1, -1, TR_ERR, "", 0, 0, 0, 0, NULL };
 
 
@@ -141,8 +157,11 @@ static int identify_bank(const char* str)
 }
 
 
-/*  str is the string to process,
-    *ptr will point to first non white space in str
+/*  function to discover column position/spacing from column
+    headings.
+    str is the string containing the headings.
+    *ptr will point to first non white space in str (ie first heading
+    which is assumed to be "Date").
  */
 static int position_init(const char* str, int bank, char const ** ptr)
 {
@@ -253,6 +272,10 @@ static const char* read_line(FILE* file, char* buf)
 }
 
 
+/*  function to read a date from a string, where the date is in the
+    format dd mmm yyyy (ie 23 Jun 2005). the year may be ommitted
+    (ie HSBC) or be two or four digits (Natwest).
+ */
 static int /* returns number of characters read */
 read_date(const char* buf, int width, int* pday, int* pmonth, int* pyear)
 {
@@ -343,12 +366,6 @@ read_date(const char* buf, int width, int* pday, int* pmonth, int* pyear)
 }
 
 
-
-
-
-
-
-
 int st_init(void)
 {
     int i;
@@ -387,7 +404,11 @@ int st_init(void)
 }
 
 
-
+/*  although we garner field/column positions from the column headings,
+    there's still some work to do... in particular for HSBC statements
+    which seem to have a life of their own when it comes to column
+    position and alignment
+ */
 static int find_positions(FILE* file, int bank)
 {
     char buf[BUFSIZE + 1];
