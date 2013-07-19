@@ -494,7 +494,7 @@ int st_process(FILE* file)
     int ln = 1;
     int bank;
     int st_date_header = 1;
-    int st_date_check = 0;
+    int st_date_read = 0;
     int st_day = -1;
     int st_month = -1;
     int st_year = -1;
@@ -543,10 +543,10 @@ int st_process(FILE* file)
             if (bank == AC_HSBC)
             {
                 const char* date_header = "Statement date:";
-                if (strncasecmp(p, predatestr, strlen(predatestr)) == 0)
+                if (strncasecmp(p, date_header, strlen(date_header)) == 0)
                 {
                     puts("XXX date header");
-                    st_date_check = 1;
+                    st_date_read = 1;
                     continue;
                 }
             }
@@ -556,13 +556,35 @@ int st_process(FILE* file)
                                                 "Your Details",
                                                 "Period", 0     };
 
-                for (n = 0; date_header[n] != 0; ++n) {
-                    if (strncmp
+                for (n = 0; date_header[n] != 0; ++n)
+                {
+                    len = strlen(date_header[n]);
+
+                    if (strncmp(date_header[n], p, len) == 0)
+                    {
+                        p += len;
+                        while (*p == ' ')
+                            ++p;
+                    }
+                    else
+                        break;
+
+                    if (*p == '\0')
+                        break;
+                }
+
+                if (date_header[n] == 0)
+                {   /* wonderful! */
+                    while (*p == ' ')
+                        ++p;
+
+                    st_date_header = 0;
+                    st_date_read = 1;
                 }
             }
         }
 
-        if (st_date_check)
+        if (st_date_read)
         {   /* HSBC statement date, p will point to first char of it */
             n = read_date(p, -1, &st_day, &st_month, &st_year);
 
@@ -571,7 +593,7 @@ int st_process(FILE* file)
 
             puts("XXX statement date");
 
-            st_date_check = 0;
+            st_date_read = 0;
             /* continue to next line, regardless */
             continue;
         }
