@@ -21,6 +21,9 @@ matching the "balance carried forward".
 It cannot yet output the data in a format readable by financial 
 software.
 
+(NOTE: HSBC statements can only be downloaded as PDF files by using
+print-to-file option of your web browser, ie Firefox).
+
 
 Development
 ===========
