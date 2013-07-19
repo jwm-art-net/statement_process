@@ -79,8 +79,8 @@ static const char* months[] = {
 /*  head of linked list used for storing transaction information
     obtained from statement.
  */
-static tran first = { -1, -1, -1, TR_ERR, "", 0, 0, 0, 0, NULL };
 
+static tran first = { -1, -1, -1, TR_ERR, "", 0.0f, 0.0f, NULL };
 
 static void printf_lstr(const char* fmt, const char* str, int len)
 {
@@ -635,7 +635,6 @@ int st_process(FILE* file)
 
         p = buf + layout[STF_DATE].pos;
 
-
         /*  Allow for transactions for which no date is specified, ie
             Natwest, where the date is specified only for the first
             transaction of the day - (date will contain spaces only).
@@ -713,7 +712,6 @@ find_balance:
             p = bal = buf + layout[STF_BAL].pos;
 
             while (*p == ' ' && *p != '\0')
-            /*p < amt + layout[STF_BAL].width)*/
                 ++p;
 
             if (*p == ' ' || *p == '\0')
@@ -746,77 +744,18 @@ find_balance:
 
     tr = first.next;
 
-    int tot_maj = tr->bal_major * tr->bal_sign;
-    int tot_min = tr->bal_minor * tr->bal_sign;
-    int tot_sign = tr->bal_sign;
+    float tot = tr->bal;
 
     while (tr)
     {
-        if (tot_sign == tr->amt_sign)
-        {
-            tot_maj += tr->amt_major * tr->amt_sign;
-            tot_min += tr->amt_minor * tr->amt_sign;
-
-            if (tot_min > 99)
-            {
-                ++tot_maj;
-                tot_min -= 100;
-            }
-            else if (tot_min < 0)
-            {
-                --tot_maj;
-                tot_min += 100;
-            }
-        }
-        else
-        {
-            int min_maj, min_min, max_maj, max_min;
-
-            if (abs(tot_maj) < abs(tr->amt_major))
-            {
-                min_maj = tot_maj;
-                min_min = tot_min;
-                max_maj = tr->amt_major;
-                max_min = tr->amt_minor;
-
-                if (tot_maj > tr->amt_major * tr->amt_sign){
-                    printf("tot_sign = -1\n");
-                    tot_sign = -1;}
-
-            }
-            else
-            {
-                min_maj = tr->amt_major;
-                min_min = tr->amt_minor;
-                max_maj = tot_maj;
-                max_min = tot_min;
-            }
-
-            tot_maj = (max_maj - min_maj) * tot_sign;
-            tot_min = (max_min - min_min);
-printf("tot_maj:%d tot_min:%d\n",tot_maj,tot_min);
-            if (tot_min > 99)
-            {
-                ++tot_maj;
-                tot_min -= 100;
-            }
-            else if (tot_min < 0)
-            {
-                --tot_maj;
-                tot_min += 100;
-            }
-        }
-
+        tot += tr->amt;
 
         printf("transaction: %02d/%02d/%4d\ttype: %3s\tdescr: %s",
                 tr->day, tr->month, tr->year,
                 get_transaction_str(tr->type), tr->descr);
 
-        printf("\tamount:%6d.%02d \t balance:%6d.%02d\t total:%6d.%02d\n",
-                            tr->amt_major * tr->amt_sign, tr->amt_minor,
-                            tr->bal_major * tr->bal_sign, tr->bal_minor,
-                            tot_maj * tot_sign, tot_min);
-
+        printf("\tamount:%9.2f \t balance:%9.2f\t total:%9.2f\n",
+                            tr->amt, tr->bal, tot);
         tr = tr->next;
     }
 

@@ -45,7 +45,6 @@ static xfer* xfers_add(const char* key, int type)
 }
 
 
-
 void trans_data_init(void)
 {
     xfers_add("Bal",                    TR_BALANCE);
@@ -128,9 +127,6 @@ int get_transaction_type(const char* str)
 {
     xfer* tr = xfers.next;
 
-/*    while (*str == ' ')
-        ++str;*/
-
     if (!str)
         return TR_ERR;
 
@@ -184,8 +180,6 @@ const char* get_transaction_str_next(int type)
 }
 
 
-
-
 char* mon_val_brut(const char* str)
 {
     char tmp[80];
@@ -205,8 +199,6 @@ char* mon_val_brut(const char* str)
 
     return strdup(tmp);
 }
-
-
 
 
 tran*   transaction_new(int day, int month, int year, int type,
@@ -264,14 +256,6 @@ tran*   transaction_new(int day, int month, int year, int type,
             free(amt);
             return 0;
         }
-
-        amt_dp = amt_p;
-
-        while (*amt_dp != '.' && *amt_dp !=' ' && *amt_dp != '\0')
-            ++amt_dp;
-
-        if (*amt_dp != '.')
-            amt_dp = 0;
     }
 
     if (balance)
@@ -284,17 +268,6 @@ tran*   transaction_new(int day, int month, int year, int type,
         if (*bal_p != '\0')
         {
             const char* bal_dr = bal_p;
-
-            if (*bal_p == '-')
-                bal_sign = -1;
-
-            bal_dp = bal_p;
-
-            while (*bal_dp != '.' && *bal_dp != ' ' && *bal_dp != '\0')
-                ++bal_dp;
-
-            if (*bal_dp != '.')
-                bal_dp = 0;
 
             while (*bal_dr != '\0')
             {
@@ -321,11 +294,11 @@ tran*   transaction_new(int day, int month, int year, int type,
     strncpy(tr->descr, descr_p, TR_DESCR_LEN - 1);
     tr->descr[TR_DESCR_LEN - 1] = '\0';
 
-    tr->amt_major = tr->amt_minor = tr->bal_major = tr->bal_minor = 0;
+    tr->amt = tr->bal = 0.0f;
 
     if (amount)
     {
-        if (sscanf(amt_p, "%d", &tr->amt_major) != 1)
+        if (sscanf(amt_p, "%f", &tr->amt) != 1)
         {
             free(tr);
             free(amt);
@@ -333,20 +306,12 @@ tran*   transaction_new(int day, int month, int year, int type,
             return 0;
         }
 
-        if (amt_dp)
-        {
-            ++amt_dp;
-
-            if (sscanf(amt_dp, "%d", &tr->amt_minor)  != 1)
-                tr->amt_minor = 0;
-        }
-
-        tr->amt_sign = amount_sign;
+        tr->amt *= amount_sign;
     }
 
     if (balance)
     {
-        if (sscanf(bal_p, "%d", &tr->bal_major) != 1)
+        if (sscanf(bal_p, "%f", &tr->bal) != 1)
         {
             fprintf(stderr, "failed to read balance\n");
             free(tr);
@@ -355,15 +320,7 @@ tran*   transaction_new(int day, int month, int year, int type,
             return 0;
         }
 
-        if (bal_dp)
-        {
-            ++bal_dp;
-
-            if (sscanf(bal_dp, "%d", &tr->bal_minor)  != 1)
-                tr->bal_minor = 0;
-        }
-
-        tr->bal_sign = bal_sign;
+        tr->bal *= bal_sign;
     }
 
     tr->next = 0;
