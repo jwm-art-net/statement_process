@@ -128,9 +128,6 @@ int get_transaction_type(const char* str)
 {
     xfer* tr = xfers.next;
 
-/*    while (*str == ' ')
-        ++str;*/
-
     if (!str)
         return TR_ERR;
 
@@ -286,7 +283,10 @@ tran*   transaction_new(int day, int month, int year, int type,
             const char* bal_dr = bal_p;
 
             if (*bal_p == '-')
+            {
                 bal_sign = -1;
+                ++bal_p;
+            }
 
             bal_dp = bal_p;
 
@@ -316,16 +316,16 @@ tran*   transaction_new(int day, int month, int year, int type,
     tr->day = day;
     tr->month = month;
     tr->year = year;
-
     tr->type = type;
     strncpy(tr->descr, descr_p, TR_DESCR_LEN - 1);
     tr->descr[TR_DESCR_LEN - 1] = '\0';
-
-    tr->amt_major = tr->amt_minor = tr->bal_major = tr->bal_minor = 0;
+    tr->amt = tr->bal = 0;
 
     if (amount)
     {
-        if (sscanf(amt_p, "%d", &tr->amt_major) != 1)
+        int small = 0;
+
+        if (sscanf(amt_p, "%d", &tr->amt) != 1)
         {
             free(tr);
             free(amt);
@@ -337,16 +337,27 @@ tran*   transaction_new(int day, int month, int year, int type,
         {
             ++amt_dp;
 
-            if (sscanf(amt_dp, "%d", &tr->amt_minor)  != 1)
-                tr->amt_minor = 0;
+            sscanf(amt_dp, "%d", &small);
+
+            if (small < 0 || small > 100)
+            {
+                fprintf(stderr, "transaction amount error:%d\n", small);
+                free(tr);
+                free(amt);
+                free(bal);
+                return 0;
+            }
         }
 
-        tr->amt_sign = amount_sign;
+        tr->amt *= 100 * amount_sign;
+        tr->amt += small * amount_sign;
     }
 
     if (balance)
     {
-        if (sscanf(bal_p, "%d", &tr->bal_major) != 1)
+        int small = 0;
+
+        if (sscanf(bal_p, "%d", &tr->bal) != 1)
         {
             fprintf(stderr, "failed to read balance\n");
             free(tr);
@@ -359,11 +370,20 @@ tran*   transaction_new(int day, int month, int year, int type,
         {
             ++bal_dp;
 
-            if (sscanf(bal_dp, "%d", &tr->bal_minor)  != 1)
-                tr->bal_minor = 0;
+            sscanf(bal_dp, "%d", &small);
+
+            if (small < 0 || small > 100)
+            {
+                fprintf(stderr, "transaction balance error:%d\n", small);
+                free(tr);
+                free(amt);
+                free(bal);
+                return 0;
+            }
         }
 
-        tr->bal_sign = bal_sign;
+        tr->bal *= 100 * bal_sign;
+        tr->bal += small * bal_sign;
     }
 
     tr->next = 0;

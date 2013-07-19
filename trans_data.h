@@ -69,13 +69,8 @@ typedef struct transaction
 
     char    descr[TR_DESCR_LEN];
 
-    int     amt_sign;
-    int     amt_major;
-    int     amt_minor;
-
-    int     bal_sign;
-    int     bal_major;
-    int     bal_minor;
+    int     amt;
+    int     bal;
 
     struct  transaction* next;
 

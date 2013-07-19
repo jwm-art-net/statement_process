@@ -79,7 +79,7 @@ static const char* months[] = {
 /*  head of linked list used for storing transaction information
     obtained from statement.
  */
-static tran first = { -1, -1, -1, TR_ERR, "", 0, 0, 0, 0, NULL };
+static tran first = { -1, -1, -1, TR_ERR, "", 0, 0, NULL };
 
 
 static void printf_lstr(const char* fmt, const char* str, int len)
@@ -743,79 +743,31 @@ find_balance:
             free(amt);
     }
 
-
     tr = first.next;
 
-    int tot_maj = tr->bal_major * tr->bal_sign;
-    int tot_min = tr->bal_minor * tr->bal_sign;
-    int tot_sign = tr->bal_sign;
+    int tot = tr->bal;
 
     while (tr)
     {
-        if (tot_sign == tr->amt_sign)
-        {
-            tot_maj += tr->amt_major * tr->amt_sign;
-            tot_min += tr->amt_minor * tr->amt_sign;
+        int amt_maj, amt_min, bal_maj, bal_min, tot_maj, tot_min;
 
-            if (tot_min > 99)
-            {
-                ++tot_maj;
-                tot_min -= 100;
-            }
-            else if (tot_min < 0)
-            {
-                --tot_maj;
-                tot_min += 100;
-            }
-        }
-        else
-        {
-            int min_maj, min_min, max_maj, max_min;
-
-            if (abs(tot_maj) < abs(tr->amt_major))
-            {
-                min_maj = tot_maj;
-                min_min = tot_min;
-                max_maj = tr->amt_major;
-                max_min = tr->amt_minor;
-
-                if (tot_maj > tr->amt_major * tr->amt_sign){
-                    printf("tot_sign = -1\n");
-                    tot_sign = -1;}
-
-            }
-            else
-            {
-                min_maj = tr->amt_major;
-                min_min = tr->amt_minor;
-                max_maj = tot_maj;
-                max_min = tot_min;
-            }
-
-            tot_maj = (max_maj - min_maj) * tot_sign;
-            tot_min = (max_min - min_min);
-printf("tot_maj:%d tot_min:%d\n",tot_maj,tot_min);
-            if (tot_min > 99)
-            {
-                ++tot_maj;
-                tot_min -= 100;
-            }
-            else if (tot_min < 0)
-            {
-                --tot_maj;
-                tot_min += 100;
-            }
-        }
-
+        tot += tr->amt;
 
         printf("transaction: %02d/%02d/%4d\ttype: %3s\tdescr: %s",
                 tr->day, tr->month, tr->year,
                 get_transaction_str(tr->type), tr->descr);
 
-        printf("\tamount:%6d.%02d \t balance:%6d.%02d\t total:%6d.%02d\n",
-                            tr->amt_major * tr->amt_sign, tr->amt_minor,
-                            tr->bal_major * tr->bal_sign, tr->bal_minor,
-                            tot_maj * tot_sign, tot_min);
+        amt_maj = tr->amt / 100;
+        amt_min = (tr->amt % 100) * (tr->amt < 0 ? -1 : 1);
+
+        bal_maj = tr->bal / 100;
+        bal_min = (tr->bal % 100) * (tr->bal < 0 ? -1 : 1);
+
+        tot_maj = tot / 100;
+        tot_min = (tot % 100) * (tot < 0 ? -1 : 1);
+
+        printf("amount:%6d.%02d\tbalance:%6d.%02d\ttotal:%6d.%02d\n",
+                amt_maj, amt_min, bal_maj, bal_min, tot_maj, tot_min);
 
         tr = tr->next;
     }
