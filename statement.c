@@ -745,7 +745,7 @@ find_balance:
 
     tr = first.next;
 
-    int tot = tr->bal;
+    int tot = (tr ? tr->bal : 0);
 
     while (tr)
     {
