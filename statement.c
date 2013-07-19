@@ -302,7 +302,8 @@ read_date(const char* buf, int width, int* pday, int* pmonth, int* pyear)
     if (day < 1 || day > 31)
         return -1;
 
-    p += 2;
+    /* can't assume day has leading zero */
+    while (*++p != ' ' && *p != '\0');
 
     if (*p == '\0')
         return -1;
@@ -498,6 +499,9 @@ int st_process(FILE* file)
     int st_day = -1;
     int st_month = -1;
     int st_year = -1;
+    int day = -1;
+    int month = -1;
+    int year = -1;
 
     tran* tr = &first;
 
@@ -518,7 +522,6 @@ int st_process(FILE* file)
     {
         const char* p = 0;
         int i, n, pos;
-        int day, month, year;
         int type;
         char* descr = 0;
         char* amt = 0;
@@ -529,6 +532,8 @@ int st_process(FILE* file)
 
         if (!(p = read_line(file, buf)))
             break;
+
+        len = strlen(buf);
 
         printf("line: %3d '%-100s'", ++ln, buf);
 
@@ -560,14 +565,13 @@ int st_process(FILE* file)
                 {
                     len = strlen(date_header[n]);
 
-                    if (strncmp(date_header[n], p, len) == 0)
-                    {
-                        p += len;
-                        while (*p == ' ')
-                            ++p;
-                    }
-                    else
+                    if (strncmp(date_header[n], p, len) != 0)
                         break;
+
+                    p += len;
+
+                    while (*p == ' ')
+                        ++p;
 
                     if (*p == '\0')
                         break;
@@ -610,8 +614,38 @@ int st_process(FILE* file)
             continue;
         }
 
+        /*  The Natwest "brought forward" line breaks everything so
+            requires "special" handling...
+         */
+        if (bank == AC_NATWEST)
+        {
+            const char* bal_header = "BROUGHT FORWARD";
+            if (strncmp(bal_header, p, strlen(bal_header)) == 0)
+            {
+                type = TR_BALANCE;
+                day = st_day;
+                month = st_month;
+                year = st_year;
+                descr = bal_header;
+                puts("XXX balance");
+                /* ok here we go, the special bit... */
+                goto find_balance;
+            }
+        }
+
         p = buf + layout[STF_DATE].pos;
-        n = read_date(p, layout[STF_DATE].width, &day, &month, &year);
+
+
+        /*  Allow for transactions for which no date is specified, ie
+            Natwest, where the date is specified only for the first
+            transaction of the day - (date will contain spaces only).
+         */
+        for (n = layout[STF_DATE].width; n > 0; --n)
+            if (*(p + n) != ' ' || *(p + n) == '\0')
+                break;
+
+        if (n)
+            n = read_date(p, layout[STF_DATE].width, &day, &month, &year);
 
         if (n < 0)
         {
@@ -627,9 +661,11 @@ int st_process(FILE* file)
                 --year;
         }
 
-        printf("XXX ok\n");
-
-        len = strlen(buf);
+        if (len < layout[STF_AMT1].pos)
+        {   /* not a transaction (accepting spaces as date gets us here) */
+            puts("XXX ignored");
+            continue;
+        }
 
         if (layout[STF_TYPE].pos < len)
         {
@@ -641,10 +677,12 @@ int st_process(FILE* file)
 
             if ((type = get_transaction_type(p)) == TR_ERR)
             {
-                printf("XXX transaction error\n");
+                puts("XXX ignored");
                 continue;
             }
         }
+
+        printf("XXX ok\n");
 
         if (layout[STF_DESCR].pos < len)
             p = descr = buf + layout[STF_DESCR].pos;
@@ -669,6 +707,7 @@ int st_process(FILE* file)
             }
         }
 
+find_balance:
         if (layout[STF_BAL].pos < len)
         {
             p = bal = buf + layout[STF_BAL].pos;
@@ -707,23 +746,65 @@ int st_process(FILE* file)
 
     tr = first.next;
 
-    int tot_maj = tr->bal_major;
-    int tot_min = tr->bal_minor;
+    int tot_maj = tr->bal_major * tr->bal_sign;
+    int tot_min = tr->bal_minor * tr->bal_sign;
+    int tot_sign = tr->bal_sign;
 
     while (tr)
     {
-        tot_maj += tr->amt_major;
-        tot_min += (tr->amt_major > 0) ? tr->amt_minor : -tr->amt_minor;
+        if (tot_sign == tr->amt_sign)
+        {
+            tot_maj += tr->amt_major * tr->amt_sign;
+            tot_min += tr->amt_minor * tr->amt_sign;
 
-        if (tot_min > 99)
-        {
-            ++tot_maj;
-            tot_min -= 100;
+            if (tot_min > 99)
+            {
+                ++tot_maj;
+                tot_min -= 100;
+            }
+            else if (tot_min < 0)
+            {
+                --tot_maj;
+                tot_min += 100;
+            }
         }
-        else if (tot_min < 0)
+        else
         {
-            --tot_maj;
-            tot_min += 100;
+            int min_maj, min_min, max_maj, max_min;
+
+            if (abs(tot_maj) < abs(tr->amt_major))
+            {
+                min_maj = tot_maj;
+                min_min = tot_min;
+                max_maj = tr->amt_major;
+                max_min = tr->amt_minor;
+
+                if (tot_maj > tr->amt_major * tr->amt_sign){
+                    printf("tot_sign = -1\n");
+                    tot_sign = -1;}
+
+            }
+            else
+            {
+                min_maj = tr->amt_major;
+                min_min = tr->amt_minor;
+                max_maj = tot_maj;
+                max_min = tot_min;
+            }
+
+            tot_maj = (max_maj - min_maj) * tot_sign;
+            tot_min = (max_min - min_min);
+printf("tot_maj:%d tot_min:%d\n",tot_maj,tot_min);
+            if (tot_min > 99)
+            {
+                ++tot_maj;
+                tot_min -= 100;
+            }
+            else if (tot_min < 0)
+            {
+                --tot_maj;
+                tot_min += 100;
+            }
         }
 
 
@@ -732,9 +813,9 @@ int st_process(FILE* file)
                 get_transaction_str(tr->type), tr->descr);
 
         printf("\tamount:%6d.%02d \t balance:%6d.%02d\t total:%6d.%02d\n",
-                            tr->amt_major, tr->amt_minor,
-                            tr->bal_major, tr->bal_minor,
-                            tot_maj, tot_min);
+                            tr->amt_major * tr->amt_sign, tr->amt_minor,
+                            tr->bal_major * tr->bal_sign, tr->bal_minor,
+                            tot_maj * tot_sign, tot_min);
 
         tr = tr->next;
     }

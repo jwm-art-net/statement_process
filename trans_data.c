@@ -128,8 +128,8 @@ int get_transaction_type(const char* str)
 {
     xfer* tr = xfers.next;
 
-    while (*str == ' ')
-        ++str;
+/*    while (*str == ' ')
+        ++str;*/
 
     if (!str)
         return TR_ERR;
@@ -192,7 +192,7 @@ char* mon_val_brut(const char* str)
     char* r = tmp;
     char* w = tmp;
 
-    sscanf(str, "%[0123456789,. D]", tmp);
+    sscanf(str, "%[+-0123456789,. D]", tmp);
 
     while (*r != '\0')
     {
@@ -203,7 +203,6 @@ char* mon_val_brut(const char* str)
 
     *w = *r;
 
-    printf("str:'%s' tmp:'%s'\n",str,tmp);
     return strdup(tmp);
 }
 
@@ -261,7 +260,10 @@ tran*   transaction_new(int day, int month, int year, int type,
             ++amt_p;
 
         if (*amt_p == '\0')
+        {
+            free(amt);
             return 0;
+        }
 
         amt_dp = amt_p;
 
@@ -282,6 +284,9 @@ tran*   transaction_new(int day, int month, int year, int type,
         if (*bal_p != '\0')
         {
             const char* bal_dr = bal_p;
+
+            if (*bal_p == '-')
+                bal_sign = -1;
 
             bal_dp = bal_p;
 
@@ -336,8 +341,7 @@ tran*   transaction_new(int day, int month, int year, int type,
                 tr->amt_minor = 0;
         }
 
-        if (amount_sign < 0 && tr->amt_major > 0)
-            tr->amt_major *= -1;
+        tr->amt_sign = amount_sign;
     }
 
     if (balance)
@@ -359,8 +363,7 @@ tran*   transaction_new(int day, int month, int year, int type,
                 tr->bal_minor = 0;
         }
 
-        if (bal_sign < 0 && tr->bal_major > 0)
-            tr->bal_major *= -1;
+        tr->bal_sign = bal_sign;
     }
 
     tr->next = 0;
