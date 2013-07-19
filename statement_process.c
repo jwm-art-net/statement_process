@@ -12,7 +12,7 @@ int main(int argc, char** argv)
 
     if (argc != 2)
     {
-        fprintf(stderr, "usage: txt_statement_process [FILE]\n");
+        fprintf(stderr, "usage: statement_process [FILE]\n");
         exit(1);
     }
 

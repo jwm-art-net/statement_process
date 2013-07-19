@@ -13,16 +13,16 @@ in a suitable format, ie QIF to begin with.
 Beginning
 =========
 
-Currently the program can read UK HSBC statements, and partially read UK 
-Natwest statements. HSBC statements can be read and balances calculated 
-after each transaction with the result of the final calculation 
-matching the "balance carried forward".
+Currently the program can read UK HSBC personal account statements* and
+Natwest personal account statements. The statements are read and the
+balance is calculated and matches the balances shown in the statement.
 
-It cannot yet output the data in a format readable by financial 
-software.
+The program outputs a dump of the data, it does not format it to be
+readable by other software packages.
 
-(NOTE: HSBC statements can only be downloaded as PDF files by using
-print-to-file option of your web browser, ie Firefox).
+
+*Note: HSBC statements can only be downloaded as PDF files by using
+the print-to-file option of your web browser, ie Firefox.
 
 
 Development
