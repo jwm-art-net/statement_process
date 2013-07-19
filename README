@@ -1,0 +1,33 @@
+statement_process
+=================
+
+statement_process is a Linux command line program to read PDF statements 
+downloaded from online banking systems and output the transactions in a 
+readable format for open source financial software.
+
+Initial processing of the PDF statements is performed by the pdf2text 
+program. statement_process then reads the text file produced and outputs 
+in a suitable format, ie QIF to begin with.
+
+
+Beginning
+=========
+
+Currently the program can read UK HSBC statements, and partially read UK 
+Natwest statements. HSBC statements can be read and balances calculated 
+after each transaction with the result of the final calculation 
+matching the "balance carried forward".
+
+It cannot yet output the data in a format readable by financial 
+software.
+
+
+Development
+===========
+
+I am writing the program for my partner and myself. The primary goal is 
+to get it working for *us*, *before* you. This means there will be 
+localization issues if you are outside of the UK. It also means it will 
+not support any other banking systems until the program is fully 
+operational for HSBC and Natwest statements.
+
