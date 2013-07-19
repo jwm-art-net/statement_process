@@ -753,9 +753,10 @@ find_balance:
 
         tot += tr->amt;
 
-        printf("transaction: %02d/%02d/%4d\ttype: %3s\tdescr: %s",
+        printf("transaction: %02d/%02d/%4d\ttype: %3s\tdescr: %-*s",
                 tr->day, tr->month, tr->year,
-                get_transaction_str(tr->type), tr->descr);
+                get_transaction_str(tr->type), layout[STF_DESCR].width,
+                tr->descr);
 
         amt_maj = tr->amt / 100;
         amt_min = (tr->amt % 100) * (tr->amt < 0 ? -1 : 1);
@@ -766,7 +767,7 @@ find_balance:
         tot_maj = tot / 100;
         tot_min = (tot % 100) * (tot < 0 ? -1 : 1);
 
-        printf("amount:%6d.%02d\tbalance:%6d.%02d\ttotal:%6d.%02d\n",
+        printf("\tamount:%6d.%02d\tbalance:%6d.%02d\ttotal:%6d.%02d\n",
                 amt_maj, amt_min, bal_maj, bal_min, tot_maj, tot_min);
 
         tr = tr->next;
@@ -774,7 +775,4 @@ find_balance:
 
     return 0;
 }
-
-
-
 

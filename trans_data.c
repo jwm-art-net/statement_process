@@ -219,6 +219,7 @@ tran*   transaction_new(int day, int month, int year, int type,
     const char* bal_dp = 0;
     char* amt = 0;
     char* bal = 0;
+    char* p;
     int bal_sign = 1;
     tran* tr;
 
@@ -319,6 +320,20 @@ tran*   transaction_new(int day, int month, int year, int type,
     tr->type = type;
     strncpy(tr->descr, descr_p, TR_DESCR_LEN - 1);
     tr->descr[TR_DESCR_LEN - 1] = '\0';
+
+    p = tr->descr;
+
+    /* right trim descr */
+    while (*p != '\0')
+        ++p;
+
+    if (p > tr->descr)
+    {
+        --p;
+        while (*p == ' ')
+            *p-- = '\0';
+    }
+
     tr->amt = tr->bal = 0;
 
     if (amount)
