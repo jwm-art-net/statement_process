@@ -455,6 +455,12 @@ tran* st_process(txtline* txtlines)
 
         p = tl->buf;
 
+        if (bank == AC_NATWEST)
+        {
+            while (*p == '.')
+                *p++ = ' ';
+        }
+
         while (*p == ' ')
             ++p;
 
