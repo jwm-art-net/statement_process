@@ -18,3 +18,9 @@
 statement_process
 
 Makefile
+
+# test files
+test.*
+*.qif
+*.txt
+
