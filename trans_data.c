@@ -124,6 +124,19 @@ void trans_data_init(void)
 }
 
 
+void trans_data_cleanup(void)
+{
+    xfer* xf = xfers.next;
+
+    while(xf)
+    {
+        xfer* tmp = xf;
+        xf = xf->next;
+        free(tmp);
+    }
+}
+
+
 int get_transaction_type(const char* str)
 {
     xfer* tr = xfers.next;

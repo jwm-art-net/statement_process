@@ -3,8 +3,10 @@
 #include <string.h>
 
 
+#include "debug.h"
 #include "statement.h"
 #include "trans_data.h"
+#include "misc.h"
 
 
 #define BUFSIZE 1024
@@ -64,22 +66,11 @@ typedef struct st_field
 } stf;
 
 
-static char*    fieldnames[STF_XXX_LAST_XXX];
-static char*    banknames[AC_XXX_LAST_XXX];
+static char* fieldnames[STF_XXX_LAST_XXX];
+static char* banknames[AC_XXX_LAST_XXX];
 
 static stf  layout[STF_XXX_LAST_XXX];
 static acid bankid[AC_XXX_LAST_XXX];
-
-static const char* months[] = {
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-};
-
-
-/*  head of linked list used for storing transaction information
-    obtained from statement.
- */
-static tran first = { -1, -1, -1, TR_ERR, "", 0, 0, NULL };
 
 
 static void printf_lstr(const char* fmt, const char* str, int len)
@@ -235,17 +226,6 @@ static int position_init(const char* str, int bank, char const ** ptr)
         break;
     }
 
-    #if 0
-    printf("\nfield order:\n");
-    for (f = 0; f < STF_XXX_LAST_XXX; ++f)
-    {
-        printf("field: %d type: '%s' (%d) pos:%d width:%d\n", f,
-                fieldnames[layout[f].type], layout[f].type,
-                layout[f].pos, layout[f].width);
-    }
-    puts("\n");
-    #endif
-
     return 0;
 }
 
@@ -313,18 +293,8 @@ read_date(const char* buf, int width, int* pday, int* pmonth, int* pyear)
     /* read month */
     strncpy(tmp, p, 3);
     tmp[3] = '\0';
-    month = -1;
 
-    for (i = 0; i < 12; ++i)
-    {
-        if (strncasecmp(tmp, months[i], 3) == 0)
-        {
-            month = i + 1;
-            break;
-        }
-    }
-
-    if (month == -1) /* invalid month */
+    if ((month = month_to_int(tmp)) == -1)
         return -1;
 
     p += 3;
@@ -489,7 +459,7 @@ static int find_positions(FILE* file, int bank)
 }
 
 
-int st_process(FILE* file)
+tran* st_process(FILE* file)
 {
     char buf[BUFSIZE + 1];
     int ln = 1;
@@ -503,19 +473,21 @@ int st_process(FILE* file)
     int month = -1;
     int year = -1;
 
+    tran first = { -1, -1, -1, TR_ERR, "", 0, 0, NULL };
+
     tran* tr = &first;
 
     rewind(file);
 
     if (!fgets(buf, BUFSIZE * sizeof(char), file))
     {
-        return -1;
+        return 0;
     }
 
     if ((bank = identify_bank(buf)) == -1)
-        return -1;
+        return 0;
 
-    printf("Statement looks like it's from %s\n", banknames[bank]);
+    debug("Statement looks like it's from %s\n", banknames[bank]);
 
 
     while (1)
@@ -535,11 +507,11 @@ int st_process(FILE* file)
 
         len = strlen(buf);
 
-        printf("line: %3d '%-100s'", ++ln, buf);
+        debug("line: %3d '%-100s'", ++ln, buf);
 
         if (*buf != ' ')    /* skip any line not starting with space */
         {
-            printf("XXX skip\n");
+            dbg("XXX skip\n");
             continue;       /* (p points to first non space */
         }
 
@@ -550,7 +522,7 @@ int st_process(FILE* file)
                 const char* date_header = "Statement date:";
                 if (strncasecmp(p, date_header, strlen(date_header)) == 0)
                 {
-                    puts("XXX date header");
+                    dbg("XXX date header");
                     st_date_read = 1;
                     continue;
                 }
@@ -595,7 +567,7 @@ int st_process(FILE* file)
             if (n < 0)
                 fprintf(stderr, "failed to read statement date\n");
 
-            puts("XXX statement date");
+            dbg("XXX statement date");
 
             st_date_read = 0;
             /* continue to next line, regardless */
@@ -604,11 +576,11 @@ int st_process(FILE* file)
 
         if (position_init(buf, bank, &p) == 0)
         {
-            printf("XXX header\n");
+            dbg("XXX header");
 
             if (find_positions(file, bank) != 0)
             {
-                return -1;
+                return 0;
             }
 
             continue;
@@ -627,7 +599,7 @@ int st_process(FILE* file)
                 month = st_month;
                 year = st_year;
                 descr = bal_header;
-                puts("XXX balance");
+                dbg("XXX balance");
                 /* ok here we go, the special bit... */
                 goto find_balance;
             }
@@ -649,7 +621,7 @@ int st_process(FILE* file)
 
         if (n < 0)
         {
-            printf("XXX ignored\n");
+            dbg("XXX ignored");
             continue;
         }
 
@@ -663,7 +635,7 @@ int st_process(FILE* file)
 
         if (len < layout[STF_AMT1].pos)
         {   /* not a transaction (accepting spaces as date gets us here) */
-            puts("XXX ignored");
+            dbg("XXX ignored");
             continue;
         }
 
@@ -677,12 +649,12 @@ int st_process(FILE* file)
 
             if ((type = get_transaction_type(p)) == TR_ERR)
             {
-                puts("XXX ignored");
+                dbg("XXX ignored");
                 continue;
             }
         }
 
-        printf("XXX ok\n");
+        dbg("XXX ok");
 
         if (layout[STF_DESCR].pos < len)
             p = descr = buf + layout[STF_DESCR].pos;
@@ -743,9 +715,16 @@ find_balance:
             free(amt);
     }
 
-    tr = first.next;
+    return first.next;
+}
 
+
+void st_text_dump(tran* tr)
+{
     int tot = (tr ? tr->bal : 0);
+
+    if (!tr)
+        return;
 
     while (tr)
     {
@@ -776,3 +755,13 @@ find_balance:
     return 0;
 }
 
+
+void transactions_free(tran* tr)
+{
+    while(tr)
+    {
+        tran* tmp = tr;
+        tr = tr->next;
+        free(tmp);
+    }
+}

@@ -1,6 +1,8 @@
 #include "statement.h"
 
 #include "trans_data.h"
+#include "qif_output.h"
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,6 +11,7 @@
 int main(int argc, char** argv)
 {
     FILE* file;
+    tran* tr = 0;
 
     if (argc != 2)
     {
@@ -26,9 +29,15 @@ int main(int argc, char** argv)
 
     st_init();
 
-    st_process(file);
+    tr = st_process(file);
+
+    qif_output(tr);
+
+    transactions_free(tr);
 
     fclose(file);
+
+    trans_data_cleanup();
 
     return 0;
 }

@@ -52,6 +52,8 @@ enum {  TR_ERR = -1,
 
 
 void        trans_data_init(void);
+void        trans_data_cleanup(void);
+
 
 int         get_transaction_type(const char*);
 const char* get_transaction_str(int type);
@@ -82,5 +84,7 @@ tran*   transaction_new(int day, int month, int year, int type,
                                             const char* amount,
                                             int amount_sign,
                                             const char* balance);
+
+void    transactions_free(tran*);
 
 #endif
