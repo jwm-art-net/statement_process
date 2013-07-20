@@ -1,6 +1,8 @@
 #include "misc.h"
 
+
 #include <string.h>
+#include <stdlib.h>
 
 
 
@@ -82,5 +84,71 @@ int str_append_n(char* buf, const char* src, int buf_len)
     buf[buf_len - 1] = '\0';
 
     return (l2 < l1 ? l2 : l1);
+}
+
+
+char* get_filename_ext(const char* fname)
+{
+    const char* d = strrchr(fname, '.');
+
+    if (!d)
+        return 0;
+
+    ++d;
+
+    if (*d == '\0')
+        return 0;
+
+    return strdup(d);
+}
+
+
+txtline* text_file_read(FILE* file)
+{
+    char buf[IOBUFSIZE];
+    txtline first = { "", NULL };
+    txtline* tl = &first;
+
+    int ln = 1;
+
+    while(fgets(buf, IOBUFSIZE * sizeof(char), file))
+    {
+        size_t nl;
+        buf[IOBUFSIZE - 1] = '\0';
+        nl = strlen(buf) - 1;
+
+        if (nl >= MAXLINELEN)
+        {
+            fprintf(stderr, "truncating line %d\n", ln);
+            nl = MAXLINELEN - 1;
+            buf[nl] = '\0';
+        }
+
+        if (buf[nl] =='\r' || buf[nl] == '\n')
+            buf[nl] = '\0';
+
+        if (!(tl->next = malloc(sizeof(*tl))))
+            break;
+
+        tl = tl->next;
+
+        strcpy(tl->buf, buf);
+        ++ln;
+    }
+
+    tl->next = 0;
+
+    return first.next;
+}
+
+
+void text_file_cleanup(txtline* tl)
+{
+    while(tl)
+    {
+        txtline* tmp = tl;
+        tl = tl->next;
+        free(tmp);
+    }
 }
 

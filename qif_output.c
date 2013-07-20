@@ -5,38 +5,36 @@
 #include <stdio.h>
 
 
-int qif_output(tran* first)
+int qif_output(tran* first, FILE* file)
 {
     if (!first)
         return -1;
 
-    printf("!Type:Bank\n");
+    fprintf(file, "!Type:Bank\n");
 
     tran* tr = first;
 
     while(tr)
     {
-        printf("D%d/%d/%d\n", tr->month, tr->day, tr->year);
+        fprintf(file, "D%d/%d/%d\n", tr->month, tr->day, tr->year);
 
         if (tr == first)
         {
-            printf("T%d.%02d\n",
-                        tr->bal / 100,
+            fprintf(file, "T%d.%02d\n", tr->bal / 100,
                        (tr->bal % 100) * (tr->bal > 0 ? 1 : -1));
-            printf("POpening Balance\n");
+            fprintf(file, "POpening Balance\n");
         }
         else
         {
-            printf("T%d.%02d\n",
-                        tr->amt / 100,
+            fprintf(file, "T%d.%02d\n", tr->amt / 100,
                        (tr->amt % 100) * (tr->amt > 0 ? 1 : -1));
 
-            printf("P%s\n", tr->descr);
+            fprintf(file, "P%s\n", tr->descr);
         }
 
-        printf("N%s\n", get_transaction_str(tr->type));
+        fprintf(file, "N%s\n", get_transaction_str(tr->type));
 
-        printf("^\n");
+        fprintf(file, "^\n");
         tr = tr->next;
     }
 

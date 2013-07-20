@@ -9,11 +9,6 @@
 #include "misc.h"
 
 
-#define BUFSIZE 1024
-#define DELIM "\n"
-#define MAXLINES 1024
-
-
 enum {  AC_ERR = -1,
         AC_UNKNOWN = 0,
         AC_HSBC,
@@ -198,28 +193,6 @@ static int position_init(const char* str, int bank)
 }
 
 
-static char* read_line(FILE* file, char* buf)
-{
-    char* p = buf;
-    size_t l;
-
-    if (!fgets(buf, BUFSIZE * sizeof(char), file))
-    {
-        return 0;
-    }
-
-    l = strlen(buf) - 1;
-
-    if (buf[l] == '\n')
-        buf[l] = '\0';
-
-    while (*p == ' ')
-        ++p;
-
-    return p;
-}
-
-
 /*  function to read a date from a string, where the date is in the
     format dd mmm yyyy (ie 23 Jun 2005). the year may be ommitted
     (ie HSBC) or be two or four digits (Natwest).
@@ -347,16 +320,18 @@ int st_init(void)
     which seem to have a life of their own when it comes to column
     position and alignment
  */
-static int find_positions(FILE* file, int bank)
+static int find_positions(txtline* tl, int bank)
 {
-    char buf[BUFSIZE + 1];
     const char* p;
     int n;
-    long fpos = ftell(file);
 
-
-    while ((p = read_line(file, buf)))
+    while ((tl = tl->next))
     {
+        p = tl->buf;
+
+        while(*p == ' ')
+            ++p;
+
         if ((n = read_date(p, 0, 0, 0)) > 0)
             break;
     }
@@ -381,12 +356,12 @@ static int find_positions(FILE* file, int bank)
             space. there are of course random exceptions where the type
             actually aligns under the header.
          */
-        layout[STF_TYPE].pos = p - buf;
+        layout[STF_TYPE].pos = p - tl->buf;
 
         /*  description always starts a few characters to the right of
             the description column.
          */
-        p = buf + layout[STF_DESCR].pos;
+        p = tl->buf + layout[STF_DESCR].pos;
 
         while (*p == ' ')
             ++p;
@@ -394,20 +369,28 @@ static int find_positions(FILE* file, int bank)
         if (*p == '\0')
             return -1;
 
-        layout[STF_DESCR].pos = p - buf;
+        layout[STF_DESCR].pos = p - tl->buf;
 
         /*  the balance sometimes starts a few characters to the left
             of the balance column.
          */
 
-        min = buf + layout[STF_BAL - 1].pos + layout[STF_BAL - 1].width;
+        min = tl->buf + layout[STF_BAL - 1].pos + layout[STF_BAL - 1].width;
 
-        while ((p = read_line(file, buf)))
+        while ((tl = tl->next))
         {
+            if ((int)strlen(tl->buf) < layout[STF_BAL].pos)
+                continue;
+
+            p = tl->buf;
+
+            while(*p == ' ')
+                ++p;
+
             if ((n = read_date(p, 0, 0, 0)) < 0)
                 break;
 
-            p = buf + layout[STF_BAL].pos;
+            p = tl->buf + layout[STF_BAL].pos;
 
             while (*p != ' ' && p > min)
             {
@@ -420,15 +403,13 @@ static int find_positions(FILE* file, int bank)
 
     }
 
-    fseek(file, fpos, SEEK_SET);
-
     return 0;
 }
 
 
-tran* st_process(FILE* file)
+tran* st_process(txtline* txtlines)
 {
-    char buf[BUFSIZE + 1];
+    /*char buf[BUFSIZE + 1];*/
     int ln = 1;
     int bank;
     int st_date_header = 1;
@@ -441,23 +422,19 @@ tran* st_process(FILE* file)
     int year = -1;
     int maxl = 0;
 
+    int ready = 0;
+
+    txtline* tl = txtlines;
+
     tran first = { -1, -1, -1, TR_ERR, "", "", 0, 0, NULL };
 
     tran* tr = &first;
     tran* tr_ml = 0; /* multi-line transaction */
 
-    rewind(file);
-
-    if (!fgets(buf, BUFSIZE * sizeof(char), file))
-    {
-        return 0;
-    }
-
-    if ((bank = identify_bank(buf)) == -1)
+    if ((bank = identify_bank(tl->buf)) == -1)
         return 0;
 
     debug("Statement looks like it's from %s\n", banknames[bank]);
-
 
     while (1)
     {
@@ -473,17 +450,22 @@ tran* st_process(FILE* file)
         char* bal = 0;
         char* type_str = 0;
 
-        if (!(p = read_line(file, buf)))
+        if (!(tl = tl->next))
             break;
 
-        len = strlen(buf);
+        p = tl->buf;
+
+        while (*p == ' ')
+            ++p;
+
+        len = strlen(tl->buf);
 
         if (maxl < len)
             maxl = len;
 
-        debug("line: %3d (%3d chars) '%-*s'", ++ln, len, maxl, buf);
+        debug("line: %3d (%3d chars) '%-*s'", ++ln, len, maxl, tl->buf);
 
-        if (*buf != ' ')    /* skip any line not starting with space */
+        if (*tl->buf != ' ') /* skip lines not starting with space */
         {
             dbg("XXX skip");
             tr_ml = 0;
@@ -495,6 +477,7 @@ tran* st_process(FILE* file)
             if (bank == AC_HSBC)
             {
                 const char* date_header = "Statement date:";
+
                 if (strncasecmp(p, date_header, strlen(date_header)) == 0)
                 {
                     dbg("XXX date header");
@@ -510,12 +493,12 @@ tran* st_process(FILE* file)
 
                 for (n = 0; date_header[n] != 0; ++n)
                 {
-                    len = strlen(date_header[n]);
+                    size_t dhl = strlen(date_header[n]);
 
-                    if (strncmp(date_header[n], p, len) != 0)
+                    if (strncmp(date_header[n], p, dhl) != 0)
                         break;
 
-                    p += len;
+                    p += dhl;
 
                     while (*p == ' ')
                         ++p;
@@ -549,17 +532,21 @@ tran* st_process(FILE* file)
             continue;
         }
 
-        if (position_init(buf, bank) == 0)
+        if (position_init(tl->buf, bank) == 0)
         {
             dbg("XXX header");
 
-            if (find_positions(file, bank) != 0)
-            {
+            if (find_positions(tl, bank) != 0)
                 return 0;
-            }
 
             tr_ml = 0;
+            ready = 1;
+            continue;
+        }
 
+        if (!ready)
+        {
+            dbg("XXX ignore");
             continue;
         }
 
@@ -584,7 +571,14 @@ tran* st_process(FILE* file)
             }
         }
 
-        p = buf + layout[STF_DATE].pos;
+        if (len < layout[STF_DATE].pos + layout[STF_DATE].width)
+        {
+            dbg("XXX ignored");
+            tr_ml = 0;
+            continue;
+        }
+
+        p = tl->buf + layout[STF_DATE].pos;
 
         /*  Allow for transactions for which no date is specified, ie
             Natwest, where the date is specified only for the first
@@ -607,8 +601,9 @@ tran* st_process(FILE* file)
         {
             if (bank == AC_NATWEST)
             {
-                if (transaction_append(tr_ml, buf + layout[STF_TYPE].pos,
-                                              buf + layout[STF_DESCR].pos))
+                if (transaction_append(tr_ml,
+                                        tl->buf + layout[STF_TYPE].pos,
+                                        tl->buf + layout[STF_DESCR].pos))
                 {
                     dbg("XXX multiline");
                     continue;
@@ -633,7 +628,7 @@ tran* st_process(FILE* file)
 
         if (layout[STF_TYPE].pos < len)
         {
-            p = buf + layout[STF_TYPE].pos;
+            p = tl->buf + layout[STF_TYPE].pos;
 
             if (bank == AC_HSBC)
                 while(*p == ' ')
@@ -652,14 +647,14 @@ tran* st_process(FILE* file)
         dbg("XXX ok");
 
         if (layout[STF_DESCR].pos < len)
-            p = descr = buf + layout[STF_DESCR].pos;
+            p = descr = tl->buf + layout[STF_DESCR].pos;
 
         for (i = STF_AMT1; i <= STF_AMT2; ++i)
         {
             if (layout[i].pos < len)
             {
                 /* is column empty? */
-                p = amt = buf + layout[i].pos;
+                p = amt = tl->buf + layout[i].pos;
 
                 while (*p == ' ' && p < amt + layout[i].width)
                     ++p;
@@ -677,7 +672,7 @@ tran* st_process(FILE* file)
 find_balance:
         if (layout[STF_BAL].pos < len)
         {
-            p = bal = buf + layout[STF_BAL].pos;
+            p = bal = tl->buf + layout[STF_BAL].pos;
 
             while (*p == ' ' && *p != '\0')
             /*p < amt + layout[STF_BAL].width)*/
@@ -744,8 +739,20 @@ void st_dump(tran* tr)
         tot_maj = tot / 100;
         tot_min = (tot % 100) * (tot < 0 ? -1 : 1);
 
-        printf("\tamount:%6d.%02d\tbalance:%6d.%02d\ttotal:%6d.%02d\n",
-                amt_maj, amt_min, bal_maj, bal_min, tot_maj, tot_min);
+        if (amt_maj == 0 && tr->amt < 0)
+            printf("\tamount:    -0.%02d", amt_min);
+        else
+            printf("\tamount:%6d.%02d",  amt_maj, amt_min);
+
+        if (bal_maj == 0 && tr->bal < 0)
+            printf("\tbalance:    -0.%02d", bal_min);
+        else
+            printf("\tbalance:%6d.%02d", bal_maj, bal_min);
+
+        if (tot_maj == 0 && tot < 0)
+            printf("\ttotal:    -0.%02d\n", tot_min);
+        else
+            printf("\ttotal:%6d.%02d\n", tot_maj, tot_min);
 
         tr = tr->next;
     }

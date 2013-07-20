@@ -52,9 +52,9 @@ static xfer* xfers_add(const char* key, int type)
 
 void trans_data_init(void)
 {
+    xfers_add("Bal",                    TR_BALANCE);
     xfers_add("Balance brought forward",TR_BALANCE);
     xfers_add("Balance carried forward",TR_BALANCE);
-    xfers_add("Bal",                    TR_BALANCE);
     xfers_add("BROUGHT FORWARD",        TR_BALANCE);
 
     xfers_add("ATM",                    TR_ATM);

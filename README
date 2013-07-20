@@ -1,27 +1,22 @@
 statement_process
 =================
 
-statement_process is a Linux command line program to read PDF statements 
+statement_process is a Linux command line program to read PDF statements
 downloaded from online banking systems and output the transactions in a 
 readable format for open source financial software.
 
-Initial processing of the PDF statements must be performed by the pdf2text
-program. statement_process can then read the text file produced and outputs
-in a suitable format, ie QIF to begin with (but not yet implemented).
-
+statement_process uses pdftotext to convert PDF documents into plain text
+before conversion to ie QIF format. pdftotext must be in the user's path.
 
 Beginning
 =========
 
 Currently the program can read UK HSBC personal account statements* and
-Natwest personal account statements once they have been converted to text
-by pdf2text. The statements are read and the balance is calculated and
-matches the balances shown in the statement. The program will then output
-a basic QIF structure.
+Natwest personal account statements. The statements are read and the
+balance is calculated and matches the balances shown in the statement.
+The program will then output a basic QIF structure.
 
-
-*Note: HSBC statements can only be downloaded as PDF files by using
-the print-to-file option of your web browser, ie Firefox.
+Error handling is rudimentary.
 
 
 Development
@@ -31,13 +26,18 @@ I am writing the program for my partner and myself. The primary goal is
 to get it working for *us*, *before* you. This means there will be 
 localization issues if you are outside of the UK. It also means it will 
 not support any other banking systems until the program is fully 
-operational for HSBC and Natwest statements.
+operational for HSBC and Natwest statements. It may well be I could
+also find the program too boring/demanding/unrewarding to continue
+to develop.
 
 
 TODO
 ====
 
-* fully read multiline transaction descriptions for Natwest statements
 * auto-categorize transactions based on categories listed in a file.
+* learn how to use finance software to find out what other information
+  might be required in the output.
 
- 
+
+*Note: HSBC statements can only be downloaded as PDF files by using
+the print-to-file option of your web browser, ie Firefox.

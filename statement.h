@@ -5,12 +5,13 @@
 #include <stdio.h>
 
 
+#include "misc.h"
 #include "trans_data.h"
 
 
 int     st_init(void);
 
-tran*   st_process(FILE*);
+tran*   st_process(txtline*);
 
 void    st_dump(tran*);
 
