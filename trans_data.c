@@ -5,6 +5,10 @@
 #include <stdio.h>
 
 
+#include "misc.h"
+
+
+
 int         get_transaction_type(const char*);
 const char* get_transaction_str(int type);
 
@@ -48,10 +52,9 @@ static xfer* xfers_add(const char* key, int type)
 
 void trans_data_init(void)
 {
-    xfers_add("Bal",                    TR_BALANCE);
-    /* the following probably redundant due to above */
     xfers_add("Balance brought forward",TR_BALANCE);
     xfers_add("Balance carried forward",TR_BALANCE);
+    xfers_add("Bal",                    TR_BALANCE);
     xfers_add("BROUGHT FORWARD",        TR_BALANCE);
 
     xfers_add("ATM",                    TR_ATM);
@@ -98,8 +101,8 @@ void trans_data_init(void)
     xfers_add("POC",    TR_POC);
 
     xfers_add("POS",                    TR_POS);
-    xfers_add("DEBIT CARD",             TR_POS);
     xfers_add("DEBIT CARD TRANSACTION", TR_POS);
+    xfers_add("DEBIT CARD",             TR_POS);
 
     xfers_add("SO",                     TR_SO);
     xfers_add("S/O",                    TR_SO);
@@ -220,19 +223,20 @@ char* mon_val_brut(const char* str)
 
 
 tran*   transaction_new(int day, int month, int year, int type,
+                                                const char* type_str,
                                                 const char* descr,
                                                 const char* amount,
                                                 int amount_sign,
                                                 const char* balance)
 {
     const char* descr_p = descr;
+    const char* type_p = type_str;
     const char* amt_p = 0;
     const char* amt_dp = 0;
     const char* bal_p = 0;
     const char* bal_dp = 0;
     char* amt = 0;
     char* bal = 0;
-    char* p;
     int bal_sign = 1;
     tran* tr;
 
@@ -331,21 +335,14 @@ tran*   transaction_new(int day, int month, int year, int type,
     tr->month = month;
     tr->year = year;
     tr->type = type;
+
     strncpy(tr->descr, descr_p, TR_DESCR_LEN - 1);
     tr->descr[TR_DESCR_LEN - 1] = '\0';
+    str_rtrim(tr->descr);
 
-    p = tr->descr;
-
-    /* right trim descr */
-    while (*p != '\0')
-        ++p;
-
-    if (p > tr->descr)
-    {
-        --p;
-        while (*p == ' ')
-            *p-- = '\0';
-    }
+    strncpy(tr->type_str, type_p, TR_TYPE_LEN - 1);
+    tr->type_str[TR_TYPE_LEN - 1] = '\0';
+    str_rtrim(tr->type_str);
 
     tr->amt = tr->bal = 0;
 
@@ -422,3 +419,15 @@ tran*   transaction_new(int day, int month, int year, int type,
     return tr;
 }
 
+
+tran*
+transaction_append(tran* tr, const char* type_str, const char* descr)
+{
+    if (!tr)
+        return 0;
+
+    str_append_n(tr->type_str, type_str, TR_TYPE_LEN);
+    str_append_n(tr->descr, descr, TR_DESCR_LEN);
+
+    return tr;
+}

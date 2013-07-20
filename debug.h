@@ -12,12 +12,15 @@
     allow a high-level message routine (ie msg_log in libpetrifui)
     to #undefine errmsg without damaging debug messages.
  */
+
+#define SRC_DIR_STRLEN 20
+
 #define debug(...)                          \
 {                                           \
-    fprintf(stderr, "%40s:%5d  %-35s: ",    \
-            __FILE__ + SRC_DIR_STRLEN + 1,  \
-            __LINE__, __FUNCTION__);        \
-    fprintf(stderr, __VA_ARGS__);           \
+    printf("%20s:%5d  %-25s: ",    \
+           __FILE__ ,  \
+           __LINE__, __FUNCTION__);        \
+    printf(__VA_ARGS__);           \
 }
 #define dbg(s) puts(s);
 #else

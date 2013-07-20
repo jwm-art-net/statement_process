@@ -2,6 +2,7 @@
 #define TRANS_DATA_H
 
 #define TR_DESCR_LEN 80
+#define TR_TYPE_LEN 40
 
 
 enum {  TRDIR_OUT = -1,
@@ -68,6 +69,7 @@ typedef struct transaction
     int     year;
 
     int     type;
+    char    type_str[TR_TYPE_LEN];
 
     char    descr[TR_DESCR_LEN];
 
@@ -80,11 +82,13 @@ typedef struct transaction
 
 
 tran*   transaction_new(int day, int month, int year, int type,
+                                            const char* type_str,
                                             const char* descr,
                                             const char* amount,
                                             int amount_sign,
                                             const char* balance);
 
-void    transactions_free(tran*);
+tran*   transaction_append(tran*, const char* type_str, const char* descr);
+
 
 #endif

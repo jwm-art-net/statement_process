@@ -1,7 +1,10 @@
 #include "statement.h"
 
-#include "trans_data.h"
+
+#include "debug.h"
+#include "misc.h"
 #include "qif_output.h"
+#include "trans_data.h"
 
 
 #include <stdio.h>
@@ -12,6 +15,7 @@ int main(int argc, char** argv)
 {
     FILE* file;
     tran* tr = 0;
+    int res = 0;
 
     if (argc != 2)
     {
@@ -31,13 +35,17 @@ int main(int argc, char** argv)
 
     tr = st_process(file);
 
-    qif_output(tr);
+    #if DEBUG
+    st_dump(tr);
+    #endif
 
-    transactions_free(tr);
+    res = qif_output(tr);
+
+    st_free(tr);
 
     fclose(file);
 
     trans_data_cleanup();
 
-    return 0;
+    return res;
 }

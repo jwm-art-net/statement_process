@@ -73,36 +73,6 @@ static stf  layout[STF_XXX_LAST_XXX];
 static acid bankid[AC_XXX_LAST_XXX];
 
 
-static void printf_lstr(const char* fmt, const char* str, int len)
-{
-    char buf[BUFSIZE];
-    strncpy(buf, str, len);
-    buf[len] = '\0';
-    printf(fmt, buf);
-}
-
-
-static const char* skip_str_right(const char* str)
-{
-    int spc = 0;
-
-    while (*str != 0)
-    {
-        if (*str == ' ')
-        {
-            if (++spc == 2)
-                return str;
-        }
-        else
-            spc = 0;
-
-        ++str;
-    }
-
-    return 0;
-}
-
-
 /* str should be first line of statement */
 static int identify_bank(const char* str)
 {
@@ -154,7 +124,7 @@ static int identify_bank(const char* str)
     *ptr will point to first non white space in str (ie first heading
     which is assumed to be "Date").
  */
-static int position_init(const char* str, int bank, char const ** ptr)
+static int position_init(const char* str, int bank)
 {
     int f;
 
@@ -162,8 +132,6 @@ static int position_init(const char* str, int bank, char const ** ptr)
 
     while (*p == ' ')
         ++p;
-
-    *ptr = p;
 
     if (strncasecmp(p, "Date", 4) != 0)
         return -1;
@@ -230,9 +198,9 @@ static int position_init(const char* str, int bank, char const ** ptr)
 }
 
 
-static const char* read_line(FILE* file, char* buf)
+static char* read_line(FILE* file, char* buf)
 {
-    const char* p = buf;
+    char* p = buf;
     size_t l;
 
     if (!fgets(buf, BUFSIZE * sizeof(char), file))
@@ -257,14 +225,13 @@ static const char* read_line(FILE* file, char* buf)
     (ie HSBC) or be two or four digits (Natwest).
  */
 static int /* returns number of characters read */
-read_date(const char* buf, int width, int* pday, int* pmonth, int* pyear)
+read_date(const char* buf, int* pday, int* pmonth, int* pyear)
 {
     const char* p = buf;
     char tmp[4];
     int day = -1;
     int month = -1;
     int year = -1;
-    int i;
 
     if (pday)
         *pday = -1;
@@ -390,7 +357,7 @@ static int find_positions(FILE* file, int bank)
 
     while ((p = read_line(file, buf)))
     {
-        if ((n = read_date(p, -1, 0, 0, 0)) > 0)
+        if ((n = read_date(p, 0, 0, 0)) > 0)
             break;
     }
 
@@ -437,7 +404,7 @@ static int find_positions(FILE* file, int bank)
 
         while ((p = read_line(file, buf)))
         {
-            if ((n = read_date(p, layout[STF_DATE].width, 0, 0, 0)) < 0)
+            if ((n = read_date(p, 0, 0, 0)) < 0)
                 break;
 
             p = buf + layout[STF_BAL].pos;
@@ -472,10 +439,12 @@ tran* st_process(FILE* file)
     int day = -1;
     int month = -1;
     int year = -1;
+    int maxl = 0;
 
-    tran first = { -1, -1, -1, TR_ERR, "", 0, 0, NULL };
+    tran first = { -1, -1, -1, TR_ERR, "", "", 0, 0, NULL };
 
     tran* tr = &first;
+    tran* tr_ml = 0; /* multi-line transaction */
 
     rewind(file);
 
@@ -492,26 +461,32 @@ tran* st_process(FILE* file)
 
     while (1)
     {
-        const char* p = 0;
-        int i, n, pos;
+        int i;
+        int n;
+        int len;
         int type;
+        int amt_sign = 1;
+
+        char* p = 0;
         char* descr = 0;
         char* amt = 0;
-        int amt_sign = 1;
         char* bal = 0;
-
-        size_t len;
+        char* type_str = 0;
 
         if (!(p = read_line(file, buf)))
             break;
 
         len = strlen(buf);
 
-        debug("line: %3d '%-100s'", ++ln, buf);
+        if (maxl < len)
+            maxl = len;
+
+        debug("line: %3d (%3d chars) '%-*s'", ++ln, len, maxl, buf);
 
         if (*buf != ' ')    /* skip any line not starting with space */
         {
-            dbg("XXX skip\n");
+            dbg("XXX skip");
+            tr_ml = 0;
             continue;       /* (p points to first non space */
         }
 
@@ -562,7 +537,7 @@ tran* st_process(FILE* file)
 
         if (st_date_read)
         {   /* HSBC statement date, p will point to first char of it */
-            n = read_date(p, -1, &st_day, &st_month, &st_year);
+            n = read_date(p, &st_day, &st_month, &st_year);
 
             if (n < 0)
                 fprintf(stderr, "failed to read statement date\n");
@@ -574,7 +549,7 @@ tran* st_process(FILE* file)
             continue;
         }
 
-        if (position_init(buf, bank, &p) == 0)
+        if (position_init(buf, bank) == 0)
         {
             dbg("XXX header");
 
@@ -582,6 +557,8 @@ tran* st_process(FILE* file)
             {
                 return 0;
             }
+
+            tr_ml = 0;
 
             continue;
         }
@@ -591,14 +568,16 @@ tran* st_process(FILE* file)
          */
         if (bank == AC_NATWEST)
         {
-            const char* bal_header = "BROUGHT FORWARD";
+            char bal_header[] = "BROUGHT FORWARD";
+
             if (strncmp(bal_header, p, strlen(bal_header)) == 0)
             {
                 type = TR_BALANCE;
                 day = st_day;
                 month = st_month;
                 year = st_year;
-                descr = bal_header;
+                descr = p;
+                type_str = p;
                 dbg("XXX balance");
                 /* ok here we go, the special bit... */
                 goto find_balance;
@@ -606,7 +585,6 @@ tran* st_process(FILE* file)
         }
 
         p = buf + layout[STF_DATE].pos;
-
 
         /*  Allow for transactions for which no date is specified, ie
             Natwest, where the date is specified only for the first
@@ -616,13 +594,26 @@ tran* st_process(FILE* file)
             if (*(p + n) != ' ' || *(p + n) == '\0')
                 break;
 
-        if (n)
-            n = read_date(p, layout[STF_DATE].width, &day, &month, &year);
+        if (n) /* only read date if date column not empty */
+            n = read_date(p, &day, &month, &year);
 
         if (n < 0)
         {
             dbg("XXX ignored");
+            tr_ml = 0;
             continue;
+        }
+        else if (n == 0)
+        {
+            if (bank == AC_NATWEST)
+            {
+                if (transaction_append(tr_ml, buf + layout[STF_TYPE].pos,
+                                              buf + layout[STF_DESCR].pos))
+                {
+                    dbg("XXX multiline");
+                    continue;
+                }
+            }
         }
 
         if (year == -1)
@@ -636,6 +627,7 @@ tran* st_process(FILE* file)
         if (len < layout[STF_AMT1].pos)
         {   /* not a transaction (accepting spaces as date gets us here) */
             dbg("XXX ignored");
+            tr_ml = 0;
             continue;
         }
 
@@ -647,9 +639,12 @@ tran* st_process(FILE* file)
                 while(*p == ' ')
                     ++p;
 
+            type_str = p;
+
             if ((type = get_transaction_type(p)) == TR_ERR)
             {
                 dbg("XXX ignored");
+                tr_ml = 0;
                 continue;
             }
         }
@@ -704,9 +699,12 @@ find_balance:
         if (amt)
             amt = strndup(amt, layout[STF_AMT1].width);
 
-        if ((tr->next = transaction_new(day, month, year, type, descr,
-                                                amt, amt_sign, bal)))
+        if ((tr->next = transaction_new(day, month, year, type, type_str, 
+                                                descr, amt, amt_sign, bal)))
+        {
             tr = tr->next;
+            tr_ml = tr;
+        }
 
         if (descr)
             free(descr);
@@ -719,7 +717,7 @@ find_balance:
 }
 
 
-void st_text_dump(tran* tr)
+void st_dump(tran* tr)
 {
     int tot = (tr ? tr->bal : 0);
 
@@ -751,12 +749,10 @@ void st_text_dump(tran* tr)
 
         tr = tr->next;
     }
-
-    return 0;
 }
 
 
-void transactions_free(tran* tr)
+void st_free(tran* tr)
 {
     while(tr)
     {

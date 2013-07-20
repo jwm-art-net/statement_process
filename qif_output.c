@@ -7,6 +7,9 @@
 
 int qif_output(tran* first)
 {
+    if (!first)
+        return -1;
+
     printf("!Type:Bank\n");
 
     tran* tr = first;
@@ -37,6 +40,7 @@ int qif_output(tran* first)
         tr = tr->next;
     }
 
+    return 0;
 }
 
 

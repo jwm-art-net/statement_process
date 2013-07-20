@@ -12,7 +12,8 @@ int     st_init(void);
 
 tran*   st_process(FILE*);
 
-void    st_text_dump(tran*);
+void    st_dump(tran*);
 
+void    st_free(tran*);
 
 #endif
