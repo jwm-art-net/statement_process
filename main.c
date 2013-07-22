@@ -1,6 +1,7 @@
 #include "statement.h"
 
 
+#include "categories.h"
 #include "debug.h"
 #include "misc.h"
 #include "qif_output.h"
@@ -24,16 +25,17 @@ int main(int argc, char** argv)
     char* fname = argv[1];
 
     txtline* text = 0;
+    txtline* cattext = 0;
 
-    if (argc != 2)
+    if (argc < 2 || argc > 3)
     {
-        fprintf(stderr, "usage: statement_process [FILE]\n");
+        fprintf(stderr, "usage: statement_process STATEMENTFILE [CATEGORYFILE]\n");
         exit(1);
     }
 
     fnext = get_filename_ext(fname);
 
-    if (strcasecmp("PDF", fnext) == 0)
+    if (fnext != 0 && strcasecmp("PDF", fnext) == 0)
     {
         char cmd[FNAME_LEN];
         txtline* tl;
@@ -92,13 +94,33 @@ int main(int argc, char** argv)
     }
 
 
+    if (argc == 3)
+    {
+        char* catfname = argv[2];
+        FILE* catfile = fopen(catfname, "r");
+
+        if (!catfile)
+            fprintf(stderr, "failed to read category file '%s'\n",
+                                                            catfname);
+        else
+        {
+            cattext = text_file_read(catfile);
+            fclose(catfile);
+
+            if (!cattext)
+                fprintf(stderr, "failed to read category file '%s'\n",
+                                                            catfname);
+        }
+    }
+
+
     trans_data_init();
 
     st_init();
-
     tr = st_process(text);
-
     text_file_cleanup(text);
+    categories_init(cattext);
+    text_file_cleanup(cattext);
 
     #if DEBUG
     st_dump(tr);
@@ -106,9 +128,9 @@ int main(int argc, char** argv)
 
     res = qif_output(tr, stdout);
 
-    st_free(tr);
-
+    categories_cleanup();
     trans_data_cleanup();
+    st_free(tr);
 
     return res;
 }

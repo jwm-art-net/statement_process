@@ -1,5 +1,6 @@
 #include "qif_output.h"
 
+#include "categories.h"
 #include "misc.h"
 
 #include <stdio.h>
@@ -16,6 +17,14 @@ int qif_output(tran* first, FILE* file)
 
     while(tr)
     {
+        const char* cat;
+
+        if (tr->type == TR_CLOSING_BALANCE)
+        {
+            tr = tr->next;
+            continue;
+        }
+
         fprintf(file, "D%d/%d/%d\n", tr->month, tr->day, tr->year);
 
         if (tr == first)
@@ -33,6 +42,9 @@ int qif_output(tran* first, FILE* file)
         }
 
         fprintf(file, "N%s\n", get_transaction_str(tr->type));
+
+        if ((cat = category_get(tr->descr)))
+            fprintf(file, "L%s\n", cat); 
 
         fprintf(file, "^\n");
         tr = tr->next;

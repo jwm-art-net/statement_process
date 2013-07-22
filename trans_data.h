@@ -48,7 +48,8 @@ enum {  TR_ERR = -1,
         TR_VIS,         /* Visa */
         TR_CONTACTLESS, /* ((( */
 
-        TR_XXX_LAST_XXX
+        TR_XXX_LAST_XXX,
+        TR_CLOSING_BALANCE /* hmmmph */
 };
 
 

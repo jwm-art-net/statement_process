@@ -1,0 +1,90 @@
+# sample categories
+#   this file lists categories and patterns used to
+#   match a transaction to a category. the pattern is
+#   a regular expression and is checked against the
+#   transaction description.
+#
+#   a category name starts at the beginning of a line.
+#   a pattern immediately follows on the line below and
+#   must be indented by one or more spaces from the start
+#   of the line. each category must be followed by a blank
+#   line before a new category begins.
+#
+#   here, the categories follow a similar format to GNU
+#   cash (for example... I'm not completely familiar with
+#   finance software yet).
+#
+#   comments are made by starting the line with a hash (#)
+#   symbol. comments can be indented. comments cannot be
+#   tagged onto the end of category name lines or pattern
+#   lines.
+#
+#   oh and btw, patterns are regex, and precedence goes
+#   from the top to the bottom of this file.
+#
+
+Expenses:Auto:Fuel
+    PETROL
+    ESSO
+    BP
+    TESCO UPT
+    SHELL
+    F/STN
+    S/STN
+    TESCO GARAGE
+
+Expenses:Groceries
+    TESCO STORE
+    SAINSBURY
+    SAINSBURY
+    ASDA SUPERSTORE
+
+Expenses:Books
+    WATERSTONES
+
+Expenses:Bicycles
+    WIGGLE LTD
+    CHAIN REACTION
+    CHAINREACTIONCYCLE
+    EVANSCYCLES
+
+Expenses:Withdrawal
+    CASH
+
+Expenses:Dining
+    PIZZA EXPRESS
+    KFC
+    ROCKSALT
+
+Expenses:Utilities:Electric
+    ECOTRICITY
+ 
+Expenses:Utilities:Water
+    WATER
+
+Expenses:Utilities:Telephone
+    BT GROUP PLC
+
+Expenses:Utilities:Mobile
+    ORANGE
+
+Expenses:Electrical
+    SCAN COMPUTERS
+    MAPLIN
+
+Expenses:Auto:Tax
+    WWW.DVLA
+
+Expenses:Auto:Maintenance
+    KWIK FIT
+    KWIKFIT
+
+Expenses:DIY
+    B&Q
+    HOMEBASE
+    SCREWFIX
+
+Expenses:Clothes
+    BURTON
+    DEBENHAMS
+    T K MAXX

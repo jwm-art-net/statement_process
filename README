@@ -34,9 +34,11 @@ to develop.
 TODO
 ====
 
-* auto-categorize transactions based on categories listed in a file.
 * learn how to use finance software to find out what other information
   might be required in the output.
+
+* include other mainstream companies in the sample_categories_uk
+  file.
 
 
 *Note: HSBC statements can only be downloaded as PDF files by using

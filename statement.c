@@ -410,7 +410,6 @@ static int find_positions(txtline* tl, int bank)
 tran* st_process(txtline* txtlines)
 {
     /*char buf[BUFSIZE + 1];*/
-    int ln = 1;
     int bank;
     int st_date_header = 1;
     int st_date_read = 0;

@@ -52,9 +52,10 @@ static xfer* xfers_add(const char* key, int type)
 
 void trans_data_init(void)
 {
+    xfers_add("Balance carried forward",TR_CLOSING_BALANCE);
+
     xfers_add("Bal",                    TR_BALANCE);
     xfers_add("Balance brought forward",TR_BALANCE);
-    xfers_add("Balance carried forward",TR_BALANCE);
     xfers_add("BROUGHT FORWARD",        TR_BALANCE);
 
     xfers_add("ATM",                    TR_ATM);
@@ -220,8 +221,6 @@ char* mon_val_brut(const char* str)
 }
 
 
-
-
 tran*   transaction_new(int day, int month, int year, int type,
                                                 const char* type_str,
                                                 const char* descr,
@@ -258,7 +257,8 @@ tran*   transaction_new(int day, int month, int year, int type,
         return 0;
     }
 
-    if (type < TR_BALANCE || type >= TR_XXX_LAST_XXX)
+    if ((type < TR_BALANCE || type >= TR_XXX_LAST_XXX)
+        && type != TR_CLOSING_BALANCE /* hmmmmph */)
     {
         fprintf(stderr, "transaction has invalid type:'%d'\n", type);
         return 0;
