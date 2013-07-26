@@ -26,7 +26,7 @@ int str_rtrim(char*);
 int str_append_n(char* buf, const char* src, int buf_len);
 
 
-char* get_filename_ext(const char*);
+const char* get_filename_ext(const char*);
 
 
 typedef struct txtline
@@ -37,9 +37,16 @@ typedef struct txtline
 } txtline;
 
 
+/*  read a file into txtlines */
+txtline*    txtlines_file_read(FILE*);
 
-txtline*    text_file_read(FILE*);
-void        text_file_cleanup(txtline*);
+/* free an individual text line, and return next */
+txtline*    txtline_free(txtline*);
 
+/* free all txtlines starting with tl */
+void        txtline_cleanup(txtline* tl);
+
+/* goto last txtline in list */
+txtline*    txtline_goto_last(txtline* tl);
 
 #endif

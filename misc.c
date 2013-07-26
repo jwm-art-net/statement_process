@@ -87,23 +87,23 @@ int str_append_n(char* buf, const char* src, int buf_len)
 }
 
 
-char* get_filename_ext(const char* fname)
+const char* get_filename_ext(const char* fname)
 {
-    const char* d = strrchr(fname, '.');
+    const char* ext = strrchr(fname, '.');
 
-    if (!d)
+    if (!ext)
         return 0;
 
-    ++d;
+    ++ext;
 
-    if (*d == '\0')
+    if (*ext == '\0')
         return 0;
 
-    return strdup(d);
+    return ext;
 }
 
 
-txtline* text_file_read(FILE* file)
+txtline* txtlines_file_read(FILE* file)
 {
     char buf[IOBUFSIZE];
     txtline first = { "", NULL };
@@ -142,7 +142,16 @@ txtline* text_file_read(FILE* file)
 }
 
 
-void text_file_cleanup(txtline* tl)
+txtline* txtline_free(txtline* tl)
+{
+    txtline* tmp = tl;
+    tl = tl->next;
+    free(tmp);
+    return tl;
+}
+
+
+void txtlines_cleanup(txtline* tl)
 {
     while(tl)
     {
@@ -150,5 +159,19 @@ void text_file_cleanup(txtline* tl)
         tl = tl->next;
         free(tmp);
     }
+}
+
+
+txtline* txtlines_goto_last(txtline* tl)
+{
+    txtline* t = 0;
+
+    while (tl)
+    {
+        t = tl;
+        tl = tl->next;
+    }
+
+    return t;
 }
 

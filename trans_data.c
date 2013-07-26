@@ -426,8 +426,16 @@ transaction_append(tran* tr, const char* type_str, const char* descr)
     if (!tr)
         return 0;
 
-    str_append_n(tr->type_str, type_str, TR_TYPE_LEN);
-    str_append_n(tr->descr, descr, TR_DESCR_LEN);
+    if (type_str)
+    {
+        str_append_n(tr->type_str, type_str, TR_TYPE_LEN);
+        tr->type = get_transaction_type(tr->type_str);
+    }
+
+    if (descr)
+        str_append_n(tr->descr, descr, TR_DESCR_LEN);
 
     return tr;
 }
+
+
